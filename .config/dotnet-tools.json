@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "bravillian.generators.cli": {
+      "version": "1.0.69",
+      "commands": [
+        "bravillian-gen"
+      ],
+      "rollForward": false
+    }
+  }
+}

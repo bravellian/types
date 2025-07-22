@@ -1,0 +1,10 @@
+{
+  "name": "PhoneNumber",
+  "namespace": "Bravillian",
+  "properties": [
+    {
+      "name": "Number",
+      "type": "string"
+    }
+  ]
+}
