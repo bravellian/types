@@ -12,14 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Humanizer;
 
 namespace Bravellian;
@@ -33,7 +27,8 @@ namespace Bravellian;
 public readonly record struct Money
         : IComparable,
           IComparable<Money>,
-          ISpanParsable<Money>
+          ISpanParsable<Money>,
+          IDecimalBackedType<Money>
 {
     private readonly decimal rawValue;
 
@@ -141,8 +136,11 @@ public readonly record struct Money
     /// <param name="value">The monetary value as a decimal.</param>
     public Money(decimal value)
     {
-        this.rawValue = TruncateToTwoDecimalPlaces(value);
+        rawValue = TruncateToTwoDecimalPlaces(value);
     }
+
+    public static Money From(decimal value) => new Money(value);
+    public static Money? From(decimal? value) => value.HasValue ? new Money(value.Value) : null;
 
     private static decimal TruncateToTwoDecimalPlaces(decimal value)
     {
@@ -150,6 +148,30 @@ public readonly record struct Money
     }
 
     public static Money operator +(Money a, Money b) => new(a.rawValue + b.rawValue);
+
+    public static Money operator +(Money a, decimal b) => new(a.rawValue + b);
+
+    public static Money operator +(decimal a, Money b) => new(a + b.rawValue);
+
+    public static Money operator +(Money a, int b) => new(a.rawValue + b);
+
+    public static Money operator +(int a, Money b) => new(a + b.rawValue);
+
+    public static bool operator ==(Money a, decimal b) => a.rawValue == b;
+
+    public static bool operator ==(decimal a, Money b) => a == b.rawValue;
+
+    public static bool operator !=(Money a, decimal b) => a.rawValue != b;
+
+    public static bool operator !=(decimal a, Money b) => a != b.rawValue;
+
+    public static bool operator ==(Money a, int b) => a.rawValue == b;
+
+    public static bool operator ==(int a, Money b) => a == b.rawValue;
+
+    public static bool operator !=(Money a, int b) => a.rawValue != b;
+
+    public static bool operator !=(int a, Money b) => a != b.rawValue;
 
     public static bool operator >(Money a, Money b) => a.rawValue > b.rawValue;
 
@@ -183,7 +205,29 @@ public readonly record struct Money
 
     public static Money operator *(int a, Money b) => new(a * b.rawValue);
 
+    public static Money operator *(Money a, decimal b) => new(a.rawValue * b);
+
+    public static Money operator *(decimal a, Money b) => new(a * b.rawValue);
+
+    public static Money operator /(Money a, int b) => new(a.rawValue / b);
+
+    public static Money operator /(Money a, decimal b) => new(a.rawValue / b);
+
+    public static decimal operator /(Money a, Money b) => a.rawValue / b.rawValue;
+
+    public static Money operator %(Money a, decimal b) => new(a.rawValue % b);
+
+    public static Money operator %(Money a, Money b) => new(a.rawValue % b.rawValue);
+
     public static Money operator -(Money a, Money b) => new(a.rawValue - b.rawValue);
+
+    public static Money operator -(Money a, decimal b) => new(a.rawValue - b);
+
+    public static Money operator -(decimal a, Money b) => new(a - b.rawValue);
+
+    public static Money operator -(Money a, int b) => new(a.rawValue - b);
+
+    public static Money operator -(int a, Money b) => new(a - b.rawValue);
 
     public static Money operator -(Money a) => new(-a.rawValue);
 
@@ -262,9 +306,9 @@ public readonly record struct Money
         return false;
     }
 
-    public decimal ToDecimal() => TruncateToTwoDecimalPlaces(this.rawValue);
+    public decimal ToDecimal() => TruncateToTwoDecimalPlaces(rawValue);
 
-    public Money Normalize() => new(this.ToDecimal());
+    public Money Normalize() => new(ToDecimal());
 
     /// <summary>
     /// Calculates the relative percentage where the current instance is considered the numerator, and the provided denominator is the denominator.
@@ -278,7 +322,7 @@ public readonly record struct Money
             return Percentage.Zero;
         }
 
-        return new Percentage(this.rawValue / denominator.rawValue);
+        return new Percentage(rawValue / denominator.rawValue);
     }
 
     /// <summary>
@@ -293,40 +337,45 @@ public readonly record struct Money
             return Percentage.Zero;
         }
 
-        return new Percentage(numerator.rawValue / this.rawValue);
+        return new Percentage(numerator.rawValue / rawValue);
     }
 
     public int CompareTo(Money other)
     {
-        return this.rawValue.CompareTo(other.rawValue);
+        return rawValue.CompareTo(other.rawValue);
     }
 
     public int CompareTo(object? obj)
     {
         if (obj is Money id)
         {
-            return this.rawValue.CompareTo(id.rawValue);
+            return rawValue.CompareTo(id.rawValue);
         }
 
-        return this.rawValue.CompareTo(obj);
+        return rawValue.CompareTo(obj);
     }
 
     /// <summary>
-    /// Returns the fractional (cents) part of the value as a long.
+    /// Gets returns the fractional (cents) part of the value as a long.
     /// </summary>
-    public long FractionalValue => (long)((this.ToDecimal() % 1.0m) * 100);
+    public long FractionalValue => (long)((ToDecimal() % 1.0m) * 100);
 
     /// <summary>
-    /// Returns the integer (dollars) part of the value as a long.
+    /// Gets returns the integer (dollars) part of the value as a long.
     /// </summary>
-    public long IntegerValue => (long)this.ToDecimal();
+    public long IntegerValue => (long)ToDecimal();
+
+    /// <summary>
+    /// Gets returns the integer (dollars) part of the value as a long.
+    /// </summary>
+    public decimal Value => ToDecimal();
 
     /// <summary>
     /// Returns the value formatted in accounting style (optionally flipping sign and including currency symbol).
     /// </summary>
     public string ToAccounting(bool flipSign = false, bool includeCurrencySymbol = true)
     {
-        var amount = this.ToDecimal();
+        var amount = ToDecimal();
         if (flipSign)
         {
             amount *= -1;
@@ -347,13 +396,13 @@ public readonly record struct Money
     /// </summary>
     public string ToCurrency()
     {
-        return this.ToDecimal().ToString("C", MoneyFormatInfo);
+        return ToDecimal().ToString("C", MoneyFormatInfo);
     }
 
     /// <summary>
     /// Returns the value formatted as a number string with group separators.
     /// </summary>
-    public string ToNumberString() => this.ToDecimal().ToString("N", MoneyFormatInfo);
+    public string ToNumberString() => ToDecimal().ToString("N", MoneyFormatInfo);
 
     /// <summary>
     /// No group separators.
@@ -362,20 +411,20 @@ public readonly record struct Money
     /// <summary>
     /// Returns the value formatted as a plain number string (no group separators).
     /// </summary>
-    public string ToPlainNumberString() => this.ToDecimal().ToString("N", MoneyNumericFormatInfo);
+    public string ToPlainNumberString() => ToDecimal().ToString("N", MoneyNumericFormatInfo);
 
     /// <summary>
     /// Returns the value as a string.
     /// </summary>
-    public override string ToString() => this.ToDecimal().ToString();
+    public override string ToString() => ToDecimal().ToString();
 
     /// <summary>
     /// Returns the value in words (e.g., "one hundred dollars and fifty cents").
     /// </summary>
     public string ToWords()
     {
-        var dollars = this.IntegerValue;
-        var cents = this.FractionalValue;
+        var dollars = IntegerValue;
+        var cents = FractionalValue;
 
         var dollarsStr = dollars.ToWords();
         var centsStr = cents.ToWords();

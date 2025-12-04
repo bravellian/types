@@ -12,19 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace Bravellian;
 
 using System.ComponentModel;
 using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
+namespace Bravellian;
 /// <summary>
-/// Represents a percentage value, always truncated to four decimal places.
+/// Represents a percentage value. The precision of a percentage is always truncated to
+/// two decimal places for its scaled value (e.g., 12.34%), which requires four decimal
+/// places for the underlying raw value (e.g., 0.1234).
 /// </summary>
 [JsonConverter(typeof(PercentageJsonConverter))]
 [TypeConverter(typeof(PercentageTypeConverter))]
 public readonly record struct Percentage
+        : IComparable,
+          IComparable<Percentage>,
+          ISpanParsable<Percentage>,
+          IDecimalBackedType<Percentage>
 {
     private readonly decimal rawValue;
 
@@ -37,9 +41,13 @@ public readonly record struct Percentage
     /// </summary>
     public static readonly Percentage Hundred = new(1m);
 
+    public static Percentage From(decimal value) => new Percentage(value);
+
+    public static Percentage? From(decimal? value) => value.HasValue ? new Percentage(value.Value) : null;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Percentage"/> struct from a double value.
-    /// The value is stored as-is (not truncated).
+    /// The value is truncated to ensure a precision of two decimal places on the scaled value.
     /// </summary>
     /// <param name="value">The percentage value as a double (e.g., 0.25 for 25%).</param>
     public Percentage(double value)
@@ -49,28 +57,29 @@ public readonly record struct Percentage
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Percentage"/> struct from a decimal value.
-    /// The value is stored as-is (not truncated).
+    /// The value is truncated to ensure a precision of two decimal places on the scaled value.
     /// </summary>
     /// <param name="value">The percentage value as a decimal (e.g., 0.25 for 25%).</param>
     public Percentage(decimal value)
     {
-        this.rawValue = value;
+        rawValue = TruncateToFourDecimalPlaces(value);
     }
 
     /// <summary>
-    /// The underlying value of the percentage (e.g., 0.25 for 25%).
-    /// Always truncated to four decimal places when accessed.
+    /// Gets the underlying value of the percentage (e.g., 0.25 for 25%).
+    /// Always truncated to four decimal places.
     /// </summary>
-    public decimal Value => TruncateToFourDecimalPlaces(this.rawValue);
+    public decimal Value => rawValue;
 
     /// <summary>
-    /// The value scaled to percent (e.g., 25 for 25%).
-    /// Always truncated to four decimal places before scaling.
+    /// Gets the value scaled to percent (e.g., 25 for 25%).
     /// </summary>
-    public decimal ScaledValue => TruncateToFourDecimalPlaces(this.rawValue) * 100;
+    public decimal ScaledValue => rawValue * 100;
 
     private static decimal TruncateToFourDecimalPlaces(decimal value)
     {
+        // We truncate to 4 decimal places for the raw value to ensure
+        // the scaled value has a precision of 2 decimal places.
         return Math.Truncate(value * 10000m) / 10000m;
     }
 
@@ -107,20 +116,20 @@ public readonly record struct Percentage
     /// </returns>
     /// <example>
     /// <code>
-    /// // For a Percentage with Value = 0.1234 (12.34%)
-    /// var percentage = new Percentage(0.1234m);
+    /// // For a Percentage with Value = 0.123456m (stored as 0.1234)
+    /// var percentage = new Percentage(0.123456m);
     /// string result = percentage.ToString(); // result is "12.34%"
-    /// 
+    ///
     /// // For a Percentage with Value = 0.5 (50%)
     /// var percentage2 = new Percentage(0.5m);
     /// string result2 = percentage2.ToString(); // result2 is "50.00%"
     /// </code>
     /// </example>
-    public override string ToString() => this.ToString(2);
+    public override string ToString() => ToString(2);
 
     /// <summary>
     /// Returns the raw scaled value followed by a percent symbol (%).
-    /// Does not perform any rounding or formatting of decimal places.
+    /// The value is truncated, not rounded, to four decimal places.
     /// </summary>
     /// <returns>
     /// The ScaledValue followed by a percent symbol.
@@ -130,21 +139,21 @@ public readonly record struct Percentage
     /// // For a Percentage with Value = 0.1234 (12.34%)
     /// var percentage = new Percentage(0.1234m);
     /// string result = percentage.ToStringRaw(); // result is "12.34%"
-    /// 
-    /// // For a Percentage with Value = 0.123456 (12.3456%)
+    ///
+    /// // For a Percentage with Value = 0.123456 (truncated to 12.34%)
     /// var percentage2 = new Percentage(0.123456m);
-    /// string result2 = percentage2.ToStringRaw(); // result2 is "12.3456%"
-    /// 
+    /// string result2 = percentage2.ToStringRaw(); // result2 is "12.34%"
+    ///
     /// // For a Percentage with Value = 1.0 (100%)
     /// var percentage3 = new Percentage(1.0m);
     /// string result3 = percentage3.ToStringRaw(); // result3 is "100%"
     /// </code>
     /// </example>
-    public string ToStringRaw() => $"{this.ScaledValue}%";
+    public string ToStringRaw() => $"{ScaledValue:0.00}%";
 
     /// <summary>
     /// Returns a formatted string representation of the percentage with the specified number of decimal places.
-    /// Uses the MidpointRounding.ToZero rounding mode to ensure consistent truncation of values.
+    /// Uses truncation to ensure consistent behavior across the type.
     /// </summary>
     /// <param name="decimals">The number of decimal places to include in the formatted string.</param>
     /// <returns>
@@ -152,19 +161,27 @@ public readonly record struct Percentage
     /// </returns>
     /// <example>
     /// <code>
-    /// // For a Percentage with Value = 0.1234 (12.34%)
-    /// var percentage = new Percentage(0.1234m);
+    /// // For a Percentage with Value = 0.123456m (truncated to 0.1234)
+    /// var percentage = new Percentage(0.123456m);
     /// string result0 = percentage.ToString(0); // result0 is "12%"
     /// string result1 = percentage.ToString(1); // result1 is "12.3%"
     /// string result2 = percentage.ToString(2); // result2 is "12.34%"
     /// string result3 = percentage.ToString(3); // result3 is "12.340%"
-    /// 
+    ///
     /// // For a Percentage with Value = 0.005 (0.5%)
     /// var percentage2 = new Percentage(0.005m);
     /// string result = percentage2.ToString(2); // result is "0.50%"
     /// </code>
     /// </example>
-    public string ToString(int decimals) => $"{Math.Round(this.ScaledValue, decimals, MidpointRounding.ToZero).ToString($"0.{new string('0', decimals)}")}%";
+    public string ToString(int decimals)
+    {
+        var scaledValue = ScaledValue;
+        var multiplier = (decimal)Math.Pow(10, decimals);
+        var truncatedValue = Math.Truncate(scaledValue * multiplier) / multiplier;
+
+        var format = decimals > 0 ? "0." + new string('0', decimals) : "0";
+        return $"{truncatedValue.ToString(format)}%";
+    }
 
     public static Percentage? TryParse(string value)
     {
@@ -203,6 +220,49 @@ public readonly record struct Percentage
     public static Percentage Parse(string value) => new(decimal.Parse(value));
 
     public static Percentage ParseScaled(string value) => new(decimal.Parse(value) / 100);
+
+    public static Percentage Parse(ReadOnlySpan<char> s, IFormatProvider provider) => new(decimal.Parse(s, provider));
+
+    public static bool TryParse(ReadOnlySpan<char> s, IFormatProvider provider, [MaybeNullWhen(false)] out Percentage result)
+    {
+        if (decimal.TryParse(s, provider, out var value))
+        {
+            result = new Percentage(value);
+            return true;
+        }
+
+        result = default;
+        return false;
+    }
+
+    public static Percentage Parse(string s, IFormatProvider provider) => new(decimal.Parse(s, provider));
+
+    public static bool TryParse([NotNullWhen(true)] string s, IFormatProvider provider, [MaybeNullWhen(false)] out Percentage result)
+    {
+        if (decimal.TryParse(s, provider, out var value))
+        {
+            result = new Percentage(value);
+            return true;
+        }
+
+        result = default;
+        return false;
+    }
+
+    public int CompareTo(Percentage other)
+    {
+        return Value.CompareTo(other.Value);
+    }
+
+    public int CompareTo(object obj)
+    {
+        if (obj is Percentage other)
+        {
+            return CompareTo(other);
+        }
+
+        throw new ArgumentException("Object is not a Percentage", nameof(obj));
+    }
 
     public class PercentageJsonConverter : JsonConverter<Percentage>
     {

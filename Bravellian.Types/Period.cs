@@ -18,7 +18,6 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Diagnostics;
-using Bravellian.Types;
 
 /// <summary>
 /// This represents an ISO 8601 Time Interval, of the format {DateTime}/{Duration}.

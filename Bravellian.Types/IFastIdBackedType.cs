@@ -17,5 +17,15 @@ namespace Bravellian;
 public interface IFastIdBackedType<TSelf>
         : IComparable,
           IComparable<TSelf>,
-          IEquatable<TSelf>
-    where TSelf : IFastIdBackedType<TSelf>;
+          IEquatable<TSelf>,
+          ILongBackedType<TSelf>
+    where TSelf : IFastIdBackedType<TSelf>
+{
+    long Value { get; }
+
+    Bravellian.FastId FastId { get; }
+
+    static abstract TSelf From(FastId value);
+
+    static abstract TSelf From(long value);
+}

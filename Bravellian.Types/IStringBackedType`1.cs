@@ -18,4 +18,9 @@ public interface IStringBackedType<TSelf>
         : IComparable,
           IComparable<TSelf>,
           IEquatable<TSelf>
-    where TSelf : IStringBackedType<TSelf>;
+    where TSelf : IStringBackedType<TSelf>
+{
+    string Value { get; }
+
+    static abstract TSelf From(string value);
+}

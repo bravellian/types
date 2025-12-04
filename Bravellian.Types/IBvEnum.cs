@@ -14,9 +14,6 @@
 
 namespace Bravellian;
 
-public interface IBvEnum<TSelf> : IBvEnum
-    where TSelf : IBvEnum<TSelf>?; // Constraint allows nullable TSelf
-
 public interface IBvEnum
 {
     string Value { get; }

@@ -1,24 +1,11 @@
-// Copyright (c) Samuel McAravey
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// CONFIDENTIAL - Copyright (c) PayeWaive LLC. All rights reserved.
+// See NOTICE.md for full restrictions and usage terms.
 
-namespace Bravellian.Types;
 
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using CommunityToolkit.Diagnostics;
 
+namespace Bravellian;
 /// <summary>
 /// This represents an ISO 8601 Duration.
 /// </summary>
@@ -61,25 +48,25 @@ public readonly partial record struct Duration
 
     public Duration(double? years, double? months, double? weeks, double? days, double? hours, double? minutes, double? seconds)
     {
-        this.Years = years;
-        this.Months = months;
-        this.Weeks = weeks;
-        this.Days = days;
-        this.Hours = hours;
-        this.Minutes = minutes;
-        this.Seconds = seconds;
+        Years = years;
+        Months = months;
+        Weeks = weeks;
+        Days = days;
+        Hours = hours;
+        Minutes = minutes;
+        Seconds = seconds;
 
-        this.yearsString = this.Years > 0 ? $"{this.Years.Value}{YearsTag}" : string.Empty;
-        this.monthsString = this.Months > 0 ? $"{this.Months.Value}{MonthsTag}" : string.Empty;
-        this.weeksString = this.Weeks > 0 ? $"{this.Weeks.Value}{WeeksTag}" : string.Empty;
-        this.daysString = this.Days > 0 ? $"{this.Days.Value}{DaysTag}" : string.Empty;
-        this.hoursString = this.Hours > 0 ? $"{this.Hours.Value}{HoursTag}" : string.Empty;
-        this.minutesString = this.Minutes > 0 ? $"{this.Minutes.Value}{MinutesTag}" : string.Empty;
-        this.secondsString = this.Seconds > 0 ? $"{this.Seconds.Value}{SecondsTag}" : string.Empty;
+        yearsString = Years > 0 ? $"{Years.Value}{YearsTag}" : string.Empty;
+        monthsString = Months > 0 ? $"{Months.Value}{MonthsTag}" : string.Empty;
+        weeksString = Weeks > 0 ? $"{Weeks.Value}{WeeksTag}" : string.Empty;
+        daysString = Days > 0 ? $"{Days.Value}{DaysTag}" : string.Empty;
+        hoursString = Hours > 0 ? $"{Hours.Value}{HoursTag}" : string.Empty;
+        minutesString = Minutes > 0 ? $"{Minutes.Value}{MinutesTag}" : string.Empty;
+        secondsString = Seconds > 0 ? $"{Seconds.Value}{SecondsTag}" : string.Empty;
 
-        var dateString = this.yearsString + this.monthsString + this.weeksString + this.daysString;
-        var timeString = this.hoursString + this.minutesString + this.secondsString;
-        this.valueString = PeriodTag + dateString + (string.IsNullOrWhiteSpace(timeString) ? string.Empty : TimeTag + timeString);
+        var dateString = yearsString + monthsString + weeksString + daysString;
+        var timeString = hoursString + minutesString + secondsString;
+        valueString = PeriodTag + dateString + (string.IsNullOrWhiteSpace(timeString) ? string.Empty : TimeTag + timeString);
     }
 
     public double? Years { get; }
@@ -96,34 +83,38 @@ public readonly partial record struct Duration
 
     public double? Seconds { get; }
 
-    public override string ToString() => this.valueString;
+    public string Value => ToString();
+
+    public static Duration From(string value) => Duration.Parse(value);
+
+    public override string ToString() => valueString;
 
     public DateTimeOffset Calculate(DateTimeOffset start)
     {
         DateTimeOffset calulated = start;
-        if (this.Years.HasValue)
+        if (Years.HasValue)
         {
-            calulated = calulated.AddYears(Integral(this.Years.Value));
-            var frac = Fractional(this.Years.Value);
+            calulated = calulated.AddYears(Integral(Years.Value));
+            var frac = Fractional(Years.Value);
             if (AboutNotEqual(frac, 0))
             {
                 calulated = calulated.AddDays(Integral(DaysInYear * frac));
             }
         }
 
-        if (this.Months.HasValue)
+        if (Months.HasValue)
         {
-            calulated = calulated.AddMonths(Integral(this.Months.Value));
-            var frac = Fractional(this.Months.Value);
+            calulated = calulated.AddMonths(Integral(Months.Value));
+            var frac = Fractional(Months.Value);
             if (AboutNotEqual(frac, 0))
             {
                 calulated = calulated.AddDays(Integral(30 * frac));
             }
         }
 
-        if (this.Weeks.HasValue)
+        if (Weeks.HasValue)
         {
-            var weeksAsDays = this.Weeks.Value * DaysInWeek;
+            var weeksAsDays = Weeks.Value * DaysInWeek;
             calulated = calulated.AddDays(Integral(weeksAsDays));
             var frac = Fractional(weeksAsDays);
             if (AboutNotEqual(frac, 0))
@@ -132,40 +123,40 @@ public readonly partial record struct Duration
             }
         }
 
-        if (this.Days.HasValue)
+        if (Days.HasValue)
         {
-            calulated = calulated.AddDays(Integral(this.Days.Value));
-            var frac = Fractional(this.Days.Value);
+            calulated = calulated.AddDays(Integral(Days.Value));
+            var frac = Fractional(Days.Value);
             if (AboutNotEqual(frac, 0))
             {
                 calulated = calulated.AddHours(Integral(HoursInDay * frac));
             }
         }
 
-        if (this.Hours.HasValue)
+        if (Hours.HasValue)
         {
-            calulated = calulated.AddHours(Integral(this.Hours.Value));
-            var frac = Fractional(this.Hours.Value);
+            calulated = calulated.AddHours(Integral(Hours.Value));
+            var frac = Fractional(Hours.Value);
             if (AboutNotEqual(frac, 0))
             {
                 calulated = calulated.AddMinutes(Integral(MinutesInHour * frac));
             }
         }
 
-        if (this.Minutes.HasValue)
+        if (Minutes.HasValue)
         {
-            calulated = calulated.AddMinutes(Integral(this.Minutes.Value));
-            var frac = Fractional(this.Minutes.Value);
+            calulated = calulated.AddMinutes(Integral(Minutes.Value));
+            var frac = Fractional(Minutes.Value);
             if (AboutNotEqual(frac, 0))
             {
                 calulated = calulated.AddSeconds(Integral(SecondsInMinute * frac));
             }
         }
 
-        if (this.Seconds.HasValue)
+        if (Seconds.HasValue)
         {
-            calulated = calulated.AddSeconds(Integral(this.Seconds.Value));
-            var frac = Fractional(this.Seconds.Value);
+            calulated = calulated.AddSeconds(Integral(Seconds.Value));
+            var frac = Fractional(Seconds.Value);
             if (AboutNotEqual(frac, 0))
             {
                 calulated = calulated.AddMilliseconds(Integral(MillisecondsInSecond * frac));
@@ -274,7 +265,7 @@ public readonly partial record struct Duration
     {
         if (obj is Duration duration)
         {
-            return this.CompareTo(duration);
+            return CompareTo(duration);
         }
 
         return 0;
@@ -282,7 +273,7 @@ public readonly partial record struct Duration
 
     public int CompareTo(Duration other)
     {
-        return string.Compare(this.ToString(), other.ToString(), StringComparison.OrdinalIgnoreCase);
+        return string.Compare(ToString(), other.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     public class DurationJsonConverter : JsonConverter<Duration>

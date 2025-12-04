@@ -1,4 +1,4 @@
-﻿// Copyright (c) Samuel McAravey
+// Copyright (c) Samuel McAravey
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,5 @@
 
 namespace Bravellian;
 
-[JsonSourceGenerationOptions(System.Text.Json.JsonSerializerDefaults.Web)]
-[JsonSerializable(typeof(JsonNode))]
-internal partial class SourceGenerationContext : JsonSerializerContext;
+public interface IBvEnum<TSelf> : IBvEnum
+    where TSelf : IBvEnum<TSelf>?; // Constraint allows nullable TSelf

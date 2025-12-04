@@ -15,12 +15,6 @@
 namespace Bravellian;
 
 using System;
-using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.Net.Mail;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 public readonly partial record struct EmailAddress
 {

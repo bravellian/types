@@ -12,16 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace Bravellian.Types;
 
 using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using Bravellian;
 
+namespace Bravellian.Types;
 /// <summary>
 /// Represents dates with values ranging from January, 0001 Anno Domini (Common Era) through December, 9999 A.D. (C.E.) in the Gregorian calendar.
 /// </summary>
@@ -52,7 +48,7 @@ public readonly partial struct MonthOnly
     /// </summary>
     /// <param name="year">The year (1 through 9999).</param>
     /// <param name="month">The month (1 through 12).</param>
-    public MonthOnly(int year, int month) => this.monthNumber = MonthNumberFromDateOnly(new DateOnly(year, month, 1));
+    public MonthOnly(int year, int month) => monthNumber = MonthNumberFromDateOnly(new DateOnly(year, month, 1));
 
     private MonthOnly(int monthNumber)
     {
@@ -72,17 +68,17 @@ public readonly partial struct MonthOnly
     /// <summary>
     /// Gets the year component of the date represented by this instance.
     /// </summary>
-    public int Year => this.GetEquivalentDateOnly().Year;
+    public int Year => GetEquivalentDateOnly().Year;
 
     /// <summary>
     /// Gets the month component of the date represented by this instance.
     /// </summary>
-    public int Month => this.GetEquivalentDateOnly().Month;
+    public int Month => GetEquivalentDateOnly().Month;
 
     /// <summary>
     /// Gets the number of months since January 1, 0001 in the Proleptic Gregorian calendar represented by this instance.
     /// </summary>
-    public int MonthNumber => this.monthNumber;
+    public int MonthNumber => monthNumber;
 
     /// <summary>
     /// Determines whether two specified instances of MonthOnly are equal.
@@ -209,7 +205,7 @@ public readonly partial struct MonthOnly
     /// <returns>An instance whose value is the sum of the date represented by this instance and the number of days represented by value.</returns>
     public MonthOnly AddMonths(int value)
     {
-        var newMonthNumber = this.monthNumber + value;
+        var newMonthNumber = monthNumber + value;
         return (uint)newMonthNumber > MaxMonthNumber
             ? throw new ArgumentOutOfRangeException(nameof(value), "Total months exceeds the acceptable value.")
             : new MonthOnly(newMonthNumber);
@@ -220,14 +216,14 @@ public readonly partial struct MonthOnly
     /// </summary>
     /// <param name="value">A number of years. The value parameter can be negative or positive.</param>
     /// <returns>An object whose value is the sum of the date represented by this instance and the number of years represented by value.</returns>
-    public MonthOnly AddYears(int value) => new(MonthNumberFromDateOnly(this.GetEquivalentDateOnly().AddYears(value)));
+    public MonthOnly AddYears(int value) => new(MonthNumberFromDateOnly(GetEquivalentDateOnly().AddYears(value)));
 
     /// <summary>
     /// Returns a DateTime that is set to the date of this MonthOnly instance and the time of specified input time.
     /// </summary>
     /// <param name="time">The time of the day.</param>
     /// <returns>The DateTime instance composed of the date of the current MonthOnly instance and the time specified by the input time.</returns>
-    public DateTime ToDateTime(TimeOnly time) => this.GetEquivalentDateOnly().ToDateTime(time);
+    public DateTime ToDateTime(TimeOnly time) => GetEquivalentDateOnly().ToDateTime(time);
 
     /// <summary>
     /// Returns a DateTime instance with the specified input kind that is set to the date of this MonthOnly instance and the time of specified input time.
@@ -235,14 +231,14 @@ public readonly partial struct MonthOnly
     /// <param name="time">The time of the day.</param>
     /// <param name="kind">One of the enumeration values that indicates whether ticks specifies a local time, Coordinated Universal Time (UTC), or neither.</param>
     /// <returns>The DateTime instance composed of the date of the current MonthOnly instance and the time specified by the input time.</returns>
-    public DateTime ToDateTime(TimeOnly time, DateTimeKind kind) => this.GetEquivalentDateOnly().ToDateTime(time, kind);
+    public DateTime ToDateTime(TimeOnly time, DateTimeKind kind) => GetEquivalentDateOnly().ToDateTime(time, kind);
 
     /// <summary>
     /// Compares the value of this instance to a specified MonthOnly value and returns an integer that indicates whether this instance is earlier than, the same as, or later than the specified DateTime value.
     /// </summary>
     /// <param name="obj">The object to compare to the current instance.</param>
     /// <returns>Less than zero if this instance is earlier than value. Greater than zero if this instance is later than value. Zero if this instance is the same as value.</returns>
-    public int CompareTo(MonthOnly obj) => this.monthNumber.CompareTo(obj.monthNumber);
+    public int CompareTo(MonthOnly obj) => monthNumber.CompareTo(obj.monthNumber);
 
     /// <summary>
     /// Compares the value of this instance to a specified object that contains a specified MonthOnly value, and returns an integer that indicates whether this instance is earlier than, the same as, or later than the specified MonthOnly value.
@@ -256,7 +252,7 @@ public readonly partial struct MonthOnly
             return 1;
         }
 
-        return obj is not MonthOnly monthOnly ? throw new ArgumentException("Argument must be MonthOnly") : this.CompareTo(monthOnly);
+        return obj is not MonthOnly monthOnly ? throw new ArgumentException("Argument must be MonthOnly", nameof(obj)) : CompareTo(monthOnly);
     }
 
     /// <summary>
@@ -264,22 +260,22 @@ public readonly partial struct MonthOnly
     /// </summary>
     /// <param name="other">The object to compare to this instance.</param>
     /// <returns>true if the value parameter equals the value of this instance; otherwise, false.</returns>
-    public bool Equals(MonthOnly other) => this.monthNumber == other.monthNumber;
+    public bool Equals(MonthOnly other) => monthNumber == other.monthNumber;
 
     /// <summary>
     /// Returns a value indicating whether this instance is equal to a specified object.
     /// </summary>
     /// <param name="obj">The object to compare to this instance.</param>
     /// <returns>true if value is an instance of MonthOnly and equals the value of this instance; otherwise, false.</returns>
-    public override bool Equals([NotNullWhen(true)] object? obj) => obj is MonthOnly monthOnly && this.monthNumber == monthOnly.monthNumber;
+    public override bool Equals([NotNullWhen(true)] object? obj) => obj is MonthOnly monthOnly && monthNumber == monthOnly.monthNumber;
 
     /// <summary>
     /// Returns the hash code for this instance.
     /// </summary>
     /// <returns>A 32-bit signed integer hash code.</returns>
-    public override int GetHashCode() => this.monthNumber;
+    public override int GetHashCode() => monthNumber;
 
-    public override string ToString() => this.GetEquivalentDateOnly().ToString("yyyy-MM");
+    public override string ToString() => GetEquivalentDateOnly().ToString("yyyy-MM");
 
     private static int MonthNumberFromDateOnly(DateOnly dt) => ((dt.Year - 1) * MonthsInYear) + dt.Month - 1;
 
@@ -291,7 +287,7 @@ public readonly partial struct MonthOnly
     [GeneratedRegex("^(?<year>\\d{2}|\\d{4})-(?<month>\\d{1,2})$", RegexOptions.Compiled, 2000)]
     private static partial Regex MonthParseRegex();
 
-    private DateOnly GetEquivalentDateOnly() => new DateOnly((this.monthNumber / MonthsInYear) + 1, (this.monthNumber % MonthsInYear) + 1, 1);
+    private DateOnly GetEquivalentDateOnly() => new DateOnly((monthNumber / MonthsInYear) + 1, (monthNumber % MonthsInYear) + 1, 1);
 
     public class MonthOnlyJsonConverter : JsonConverter<MonthOnly>
     {

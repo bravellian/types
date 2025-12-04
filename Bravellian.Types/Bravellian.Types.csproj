@@ -12,7 +12,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Bravellian.Generators" Version="2025.12.4.1055" />
     <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.4.0" />
     <PackageReference Include="Cronos" Version="0.11.1" />
     <PackageReference Include="Humanizer.Core" Version="3.0.1" />

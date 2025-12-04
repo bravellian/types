@@ -14,6 +14,10 @@
 
 namespace Bravellian;
 
-[JsonSourceGenerationOptions(System.Text.Json.JsonSerializerDefaults.Web)]
-[JsonSerializable(typeof(JsonNode))]
-internal partial class SourceGenerationContext : JsonSerializerContext;
+public interface IBvParsable<TSelf>
+    where TSelf : IBvParsable<TSelf>?
+{
+    static abstract TSelf Parse(string value);
+
+    static abstract bool TryParse([NotNullWhen(true)] string? value, [MaybeNullWhen(false)] out TSelf result);
+}

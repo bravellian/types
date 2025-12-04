@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace Bravellian.Interfaces.Files;
+namespace Bravellian;
 
 public interface IFile
 {

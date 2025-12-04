@@ -1,12 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
+﻿// Copyright (c) Samuel McAravey
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+#nullable enable
+
 using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Bravellian;
 
@@ -16,7 +28,8 @@ public readonly partial record struct FastId
         : IComparable,
           IComparable<FastId>,
           IEquatable<FastId>,
-          IParsable<FastId>
+          IParsable<FastId>,
+          ILongBackedType<FastId>
 {
     public static readonly DateTimeOffset CustomEpoch = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
     private const int TimestampBits = 34;
@@ -63,6 +76,9 @@ public readonly partial record struct FastId
     {
         return obj is FastId id ? this.Value.CompareTo(id.Value) : this.Value.CompareTo(obj);
     }
+
+    public static FastId From(long value) => new FastId(value);
+    public static FastId? From(long? value) => value.HasValue ? new FastId(value.Value) : null;
 
     /// <summary>
     /// Creates a FastId deterministically from a Guid, ensuring its timestamp component
@@ -111,7 +127,7 @@ public readonly partial record struct FastId
         // 5. Combine the constrained timestamp with the hashed random part.
         ulong finalValue = (constrainedTimestampSeconds << RandomBits) | hashedRandomPart;
 
-        return new FastId((long)finalValue);
+        return FastId.From((long)finalValue);
     }
 
     /// <summary>
@@ -164,10 +180,10 @@ public readonly partial record struct FastId
         // 6. Combine the constrained timestamp with the hashed random part.
         ulong finalValue = (constrainedTimestampSeconds << RandomBits) | hashedRandomPart;
 
-        return new FastId((long)finalValue);
+        return FastId.From((long)finalValue);
     }
 
-    public static bool TryParse([NotNullWhen(true)] string value, [MaybeNullWhen(false)][NotNullWhen(true)] out FastId result)
+    public static bool TryParse([NotNullWhen(true)] string? value, [MaybeNullWhen(false)][NotNullWhen(true)] out FastId result)
     {
         if (value == null)
         {
@@ -175,15 +191,22 @@ public readonly partial record struct FastId
             return false;
         }
 
-        return TryParse(value, null, out result);
+        return TryParse(value.AsSpan(), null, out result);
     }
 
     public static bool TryParse([NotNullWhen(true)] string? value, IFormatProvider? provider, [MaybeNullWhen(false)][NotNullWhen(true)] out FastId result)
     {
+        return TryParse(value == null ? ReadOnlySpan<char>.Empty : value.AsSpan(), provider, out result);
+    }
+
+    public static bool TryParse(ReadOnlySpan<char> value, [MaybeNullWhen(false)][NotNullWhen(true)] out FastId result) => TryParse(value, null, out result);
+
+    public static bool TryParse(ReadOnlySpan<char> value, IFormatProvider? provider, [MaybeNullWhen(false)][NotNullWhen(true)] out FastId result)
+    {
         result = default;
 
         // 1. Null or Empty/Whitespace Check
-        if (string.IsNullOrWhiteSpace(value))
+        if (value.IsEmpty || value.IsWhiteSpace())
         {
             return false;
         }
@@ -192,8 +215,15 @@ public readonly partial record struct FastId
         // Max 13 characters for a 64-bit number (ceil(64/5)). Min 1 character (e.g., "0").
         // The Trim() below is because Crockford spec is often case-insensitive and might ignore hyphens
         // but we'll assume for this basic validator no hyphens are allowed in our canonical form.
-        string cleanString = value.Trim(); // Remove leading/trailing whitespace, though IsNullOrWhiteSpace covers most.
-        if (cleanString.Length == 0 || cleanString.Length > 13)
+
+        // Attempt to parse as a raw long value first.
+        if (long.TryParse(value, out long rawLongValue))
+        {
+            result = FastId.From(rawLongValue);
+            return true;
+        }
+
+        if (value.Length == 0 || value.Length > 13)
         {
             return false;
         }
@@ -210,7 +240,7 @@ public readonly partial record struct FastId
 
             // We decode to ulong first to get the full 64-bit unsigned pattern.
             // Then cast to long for storage (this is a bitwise cast).
-            long longValue = CrockfordBase32.DecodeToInt64(cleanString); // Assuming this method from prior example
+            long longValue = CrockfordBase32.DecodeToInt64(value); // Assuming this method from prior example
             long unshuffled = LongBitShuffler.UnshuffleBits(longValue);
 
             // If decode succeeds, the string is valid in terms of characters and fitting into 64 bits.
@@ -221,7 +251,7 @@ public readonly partial record struct FastId
             // A more robust approach might re-encode ulongValue to get a canonical string form.
             // String canonicalString = CrockfordBase32.Encode(longValue);
 
-            result = new FastId(unshuffled, cleanString); // Or use canonicalString
+            result = new FastId(unshuffled, value.ToString()); // Or use canonicalString
             return true;
         }
         catch (ArgumentNullException) // Should be caught by IsNullOrWhiteSpace earlier
@@ -250,6 +280,11 @@ public readonly partial record struct FastId
             return null;
         }
 
+        return FastId.TryParse(value.AsSpan());
+    }
+
+    public static FastId? TryParse(ReadOnlySpan<char> value)
+    {
         if (FastId.TryParse(value, out FastId result))
         {
             return result;
@@ -265,12 +300,7 @@ public readonly partial record struct FastId
             throw new ArgumentNullException(nameof(value));
         }
 
-        if (FastId.TryParse(value, out FastId result))
-        {
-            return result;
-        }
-
-        throw new ArgumentException("Unable to parse this value", nameof(value));
+        return Parse(value.AsSpan());
     }
 
     public static FastId Parse(string value, IFormatProvider? provider)
@@ -280,17 +310,24 @@ public readonly partial record struct FastId
             throw new ArgumentNullException(nameof(value));
         }
 
-        if (FastId.TryParse(value, provider, out FastId result))
+        return Parse(value.AsSpan(), provider);
+    }
+
+    public static FastId Parse(ReadOnlySpan<char> s) => Parse(s, null);
+
+    public static FastId Parse(ReadOnlySpan<char> s, IFormatProvider? provider)
+    {
+        if (FastId.TryParse(s, provider, out FastId result))
         {
             return result;
         }
 
-        throw new ArgumentException("Unable to parse this value", nameof(value));
+        throw new ArgumentException("Unable to parse this value", nameof(s));
     }
 
     public static FastId New()
     {
-        return new FastId(GenerateInt64SecondsPrecision());
+        return FastId.From(GenerateInt64SecondsPrecision());
     }
 
     private static long GenerateInt64SecondsPrecision()
@@ -359,7 +396,7 @@ public readonly partial record struct FastId
 
             if (value is long l)
             {
-                return new FastId(l);
+                return FastId.From(l);
             }
 
             return base.ConvertFrom(context, culture, value);
@@ -383,7 +420,6 @@ public readonly partial record struct FastId
             return base.ConvertTo(context, culture, value, destinationType);
         }
     }
-
 
     public static class CrockfordBase32
     {
@@ -465,14 +501,34 @@ public readonly partial record struct FastId
                 // If you want empty string to mean 0: if (string.IsNullOrEmpty(crockfordString)) return 0;
                 throw new ArgumentNullException(nameof(crockfordString));
             }
-            if (crockfordString == "0")
+
+            return Decode(crockfordString.AsSpan());
+        }
+
+        /// <summary>
+        /// Decodes a Crockford Base32 string into a 64-bit unsigned integer (ulong).
+        /// </summary>
+        /// <param name="crockfordString">The Crockford Base32 string to decode. Case-insensitive.</param>
+        /// <returns>The decoded ulong.</returns>
+        /// <exception cref="ArgumentException">Thrown if crockfordString is empty, contains invalid characters, or decodes to a value exceeding ulong.MaxValue.</exception>
+        public static ulong Decode(ReadOnlySpan<char> crockfordString)
+        {
+            // Trim whitespace
+            crockfordString = crockfordString.Trim();
+
+            if (crockfordString.IsEmpty)
+            {
+                throw new ArgumentException("Crockford Base32 string cannot be empty.", nameof(crockfordString));
+            }
+
+            if (crockfordString.SequenceEqual("0"))
             {
                 return 0;
             }
 
             ulong result = 0;
 
-            var cleanString = crockfordString.Trim().ToUpperInvariant(); // Normalize to uppercase for case-insensitivity
+            // Process each character directly - DecodeMap handles both cases
             foreach (char c in crockfordString)
             {
                 if (!DecodeMap.TryGetValue(c, out byte value))
@@ -481,25 +537,21 @@ public readonly partial record struct FastId
                 }
 
                 // Check for overflow before multiplication and addition
-                // result = result * 32 + value;
-                // Check: result * 32 + value > ulong.MaxValue
-                // Equivalent to: result > (ulong.MaxValue - value) / 32
                 if (result > (ulong.MaxValue - value) / 32)
                 {
                     throw new OverflowException("Crockford Base32 string decodes to a number larger than ulong.MaxValue.");
                 }
+
                 result = result * 32 + value;
             }
+
             return result;
         }
 
         /// <summary>
         /// Decodes a Crockford Base32 string into a 64-bit signed integer (long).
-        /// The string is decoded to a ulong and its bit pattern is then cast to a long.
         /// </summary>
-        /// <param name="crockfordString">The Crockford Base32 string to decode.</param>
-        /// <returns>The decoded long.</returns>
-        public static long DecodeToInt64(string crockfordString)
+        public static long DecodeToInt64(ReadOnlySpan<char> crockfordString)
         {
             return (long)Decode(crockfordString);
         }
@@ -549,6 +601,7 @@ public readonly partial record struct FastId
                     shuffledValue |= (1L << ShufflePermutation[i]);
                 }
             }
+
             return shuffledValue;
         }
 
@@ -570,6 +623,7 @@ public readonly partial record struct FastId
                     originalValue |= (1L << UnshufflePermutation[i]);
                 }
             }
+
             return originalValue;
         }
     }

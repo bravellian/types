@@ -19,4 +19,9 @@ public interface IGuidBackedType<TSelf>
           IComparable<TSelf>,
           IEquatable<TSelf>,
           ISpanParsable<TSelf>
-    where TSelf : IGuidBackedType<TSelf>, ISpanParsable<TSelf>;
+    where TSelf : IGuidBackedType<TSelf>, ISpanParsable<TSelf>
+{
+    Guid Value { get; }
+
+    static abstract TSelf From(Guid value);
+}

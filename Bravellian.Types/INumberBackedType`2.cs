@@ -23,4 +23,9 @@ public interface INumberBackedType<TSelf, TNumber>
           ISpanParsable<TSelf>,
           INumberBackedType
     where TSelf : INumberBackedType<TSelf, TNumber>
-    where TNumber : INumber<TNumber>;
+    where TNumber : INumber<TNumber>
+{
+    TNumber Value { get; }
+
+    static abstract TSelf From(TNumber value);
+}
