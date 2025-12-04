@@ -1,0 +1,10 @@
+{
+  "name": "EmailAddress",
+  "namespace": "Bravellian",
+  "properties": [
+    {
+      "name": "Address",
+      "type": "System.Net.Mail.MailAddress"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Bravellian.Types.Tests/Bravellian.Types.Tests.csproj" />
+  <Project Path="Bravellian.Types/Bravellian.Types.csproj" />
+</Solution>
